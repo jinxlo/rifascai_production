@@ -1,0 +1,612 @@
+/* RaffleCard.css */
+
+/* Base Card Styles */
+.raffle-card {
+    background-color: #ffffff;
+    border-radius: 10px;
+    margin: 10px auto;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    overflow: hidden;
+    padding: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.raffle-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Image Container */
+.image-container {
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;    /* Reduced from 10px */
+    margin-bottom: 8px;    /* Reduced from 10px */
+    background-color: #f8f9fa;
+}
+
+.raffle-image {
+    width: 100%;
+    height: 160px;         /* Reduced from 200px */
+    border-radius: 8px;    /* Reduced from 10px */
+    object-fit: cover;
+    transition: transform 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.raffle-image:hover {
+    transform: scale(1.05);
+}
+
+.raffle-image[src*="placeholder"] {
+    opacity: 0.7;
+    background-color: #f3f4f6;
+}
+
+/* Content Styles */
+.raffle-name {
+    font-size: 18px;      /* Reduced from 22px */
+    font-weight: bold;
+    color: #1d1d1f;
+    margin-top: 12px;     /* Reduced from 15px */
+}
+
+.raffle-description {
+    font-size: 13px;      /* Reduced from 14px */
+    color: #8e8e93;
+    margin: 8px 0 12px 0; /* Reduced from 10px 0 15px 0 */
+    line-height: 1.4;
+}
+
+.raffle-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 12px;   /* Reduced from 15px */
+    padding: 0 8px;        /* Reduced from 10px */
+}
+
+.raffle-price,
+.raffle-tickets,
+.raffle-total-tickets {
+    font-size: 13px;      /* Reduced from 14px */
+    color: #333;
+    margin: 4px 0;        /* Reduced from 5px */
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Stats Section */
+.ticket-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;             /* Reduced from 10px */
+    margin: 12px 0;       /* Reduced from 15px */
+    padding: 8px;         /* Reduced from 10px */
+    background-color: #f8f9fa;
+    border-radius: 6px;   /* Reduced from 8px */
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;             /* Reduced from 5px */
+}
+
+.stat-label {
+    font-size: 11px;      /* Reduced from 12px */
+    color: #6b7280;
+}
+
+.stat-value {
+    font-size: 13px;      /* Reduced from 14px */
+    font-weight: 600;
+    padding: 3px 6px;     /* Reduced from 4px 8px */
+    border-radius: 4px;   /* Reduced from 6px */
+}
+
+.stat-value.sold {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.stat-value.reserved {
+    background-color: #fff3cd;
+    color: #997404;
+}
+
+.stat-value.available {
+    background-color: #e0f2fe;
+    color: #075985;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+    width: 100%;
+    margin: 8px 0;        /* Reduced from 10px */
+}
+
+.progress-bar {
+    width: 100%;
+    background-color: #e0e0e0;
+    height: 6px;          /* Reduced from 8px */
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background: linear-gradient(90deg, #6a1b9a 0%, #4a148c 100%);
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 11px;      /* Reduced from 12px */
+    color: #333;
+    margin-top: 4px;      /* Reduced from 5px */
+    text-align: right;
+}
+
+/* Modal Styles - Keeping original */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-content h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.modal-content input,
+.modal-content textarea {
+    width: 100%;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    transition: border-color 0.2s ease;
+}
+
+.modal-content input:focus,
+.modal-content textarea:focus {
+    outline: none;
+    border-color: #6a1b9a;
+    box-shadow: 0 0 0 2px rgba(106, 27, 154, 0.1);
+}
+
+.modal-content textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Form Labels - Keeping original */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+}
+
+/* File Upload - Keeping original */
+.file-upload {
+    margin: 1rem 0;
+}
+
+.file-upload label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background-color: #f3f4f6;
+    border: 2px dashed #e5e7eb;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.file-upload label:hover {
+    border-color: #6a1b9a;
+    background-color: #f9fafb;
+}
+
+.file-upload input[type="file"] {
+    display: none;
+}
+
+/* Modal Actions - Keeping original */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.modal-actions button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.modal-actions .confirm {
+    background-color: #6a1b9a;
+    color: white;
+    border: none;
+}
+
+.modal-actions .confirm:hover {
+    background-color: #4a148c;
+    transform: translateY(-1px);
+}
+
+.modal-actions .cancel {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+.modal-actions .cancel:hover {
+    background-color: #e5e7eb;
+    transform: translateY(-1px);
+}
+
+/* Admin Actions - Optimized sizes */
+.admin-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;             /* Reduced from 8px */
+    padding: 8px;         /* Reduced from 10px */
+    margin-top: 8px;      /* Reduced from 10px */
+}
+
+.action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;             /* Reduced from 6px */
+    padding: 6px 10px;    /* Reduced from 8px 12px */
+    font-size: 12px;      /* Reduced from 13px */
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;   /* Reduced from 8px */
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: white;
+    background-color: #6a1b9a;
+}
+
+.action-button:hover {
+    background-color: #4a148c;
+    transform: translateY(-1px);
+}
+
+.action-button.end-button {
+    background-color: #7c3aed;
+}
+
+.action-button.end-button:hover {
+    background-color: #6d28d9;
+}
+
+.action-button.delete-button {
+    background-color: #dc2626;
+}
+
+.action-button.delete-button:hover {
+    background-color: #b91c1c;
+}
+
+.action-button svg {
+    width: 14px;          /* Reduced from 16px */
+    height: 14px;         /* Reduced from 16px */
+}
+
+/* User Action Button */
+.buy-ticket-button {
+    background-color: #6a1b9a;
+    color: #fff;
+    padding: 8px 16px;
+    font-size: 13px;      /* Reduced from 14px */
+    font-weight: bold;
+    border-radius: 25px;  /* Reduced from 30px */
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    max-width: 180px;     /* Reduced from 200px */
+    margin: 6px auto 0 auto;
+    display: block;
+}
+
+.buy-ticket-button:hover:not(:disabled) {
+    background-color: #4a148c;
+    transform: translateY(-2px);
+}
+
+.buy-ticket-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Status Badge - Keeping original */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin: 10px 0;
+}
+
+.status-badge.active {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.status-badge.inactive {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* Enhanced Loading State */
+.raffle-card.loading {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 15px;
+    position: relative;
+    background: transparent;
+}
+
+.loading-spinner::before,
+.loading-spinner::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background-color: #6a1b9a;
+    opacity: 0.6;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.loading-spinner::after {
+    animation-delay: -1s;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+.loading-text {
+    color: #6b7280;
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 15px;
+    animation: fadeInOut 1.5s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+/* Enhanced Error State */
+.raffle-card.error {
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: #fef2f2;
+    border: 1px solid #fee2e2;
+    padding: 24px;
+    gap: 16px;
+}
+
+.error-message {
+    color: #991b1b;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1.5;
+    max-width: 80%;
+    margin: 0;
+}
+
+.retry-button {
+    background-color: #6a1b9a;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.retry-button:hover {
+    background-color: #4a148c;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.retry-button:active {
+    transform: translateY(0);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .raffle-card.loading,
+    .raffle-card.error {
+        min-height: 250px;
+        padding: 16px;
+    }
+
+    .loading-spinner {
+        width: 40px;
+        height: 40px;
+    }
+
+    .error-message {
+        font-size: 14px;
+    }
+}
+.retry-button {
+    background-color: #6a1b9a;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.retry-button:hover {
+    background-color: #4a148c;
+    transform: translateY(-1px);
+}
+
+.last-updated {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 10px;
+}
+
+/* Enhanced Responsive Design */
+@media (max-width: 640px) {
+    .raffle-card {
+        padding: 6px;
+        margin: 8px auto;
+    }
+
+    .admin-actions {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .action-button {
+        padding: 8px;
+        font-size: 13px;
+    }
+
+    .raffle-image {
+        height: 140px;    /* Further reduced for mobile */
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 1rem;
+        margin: 0.5rem;
+    }
+
+    .modal-actions {
+        flex-direction: column;
+    }
+
+    .modal-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Small screen optimization */
+@media (max-width: 320px) {
+    .raffle-card {
+        margin: 6px auto;
+    }
+
+    .raffle-image {
+        height: 120px;
+    }
+
+    .ticket-stats {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+}
+
+/* Print Styles - Keeping original */
+/* Print Styles - Continuing */
+@media print {
+    .raffle-card {
+        box-shadow: none;
+        border: 1px solid #e5e7eb;
+        break-inside: avoid;
+    }
+
+    .admin-actions,
+    .buy-ticket-button,
+    .modal-overlay {
+        display: none;
+    }
+
+    .raffle-image {
+        max-height: 150px;
+    }
+}

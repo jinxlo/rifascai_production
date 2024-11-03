@@ -1,0 +1,4 @@
+2024-10-30T04:40:57.344Z [INFO]: Starting email configuration test
+2024-10-30T04:40:57.351Z [INFO]: Email Configuration:
+2024-10-30T04:40:57.371Z [INFO]: Testing SMTP connection...
+2024-10-30T04:40:57.411Z [ERROR]: Email test failed:

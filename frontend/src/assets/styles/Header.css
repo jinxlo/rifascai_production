@@ -1,0 +1,133 @@
+.header {
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.flex {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+}
+
+.flex-shrink-0 img {
+    height: 40px;
+    width: auto;
+    max-width: 120px;
+    object-fit: contain;
+}
+
+/* Buttons Container */
+.buttons-container {
+    display: flex;
+    align-items: center;
+    gap: 24px; /* Increased spacing between buttons */
+}
+
+/* Button Base Styles */
+.login-button,
+.logout-button,
+.dashboard-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+/* Login/Logout Button Styles */
+.login-button,
+.logout-button {
+    background: #6a1b9a;
+    color: white;
+    box-shadow: 0 2px 4px rgba(106, 27, 154, 0.2);
+    margin-left: 12px; /* Added margin for additional spacing */
+}
+
+.login-button:hover,
+.logout-button:hover {
+    background-color: #4a148c;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(106, 27, 154, 0.3);
+}
+
+/* Dashboard Button Styles */
+.dashboard-button {
+    background-color: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #e5e7eb;
+}
+
+.dashboard-button:hover {
+    background-color: #e5e7eb;
+    color: #1f2937;
+    transform: translateY(-1px);
+}
+
+/* Button Text and Icon Alignment */
+.login-button span,
+.logout-button span,
+.dashboard-button span {
+    margin-left: 6px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Icon Styles */
+.h-5 {
+    height: 20px;
+    width: 20px;
+}
+
+/* Responsive Design */
+@media screen and (max-width: 640px) {
+    .container {
+        padding: 0 12px;
+    }
+
+    .buttons-container {
+        gap: 12px; /* Reduced spacing on mobile */
+    }
+
+    .login-button span,
+    .logout-button span,
+    .dashboard-button span {
+        display: none;
+    }
+
+    .login-button,
+    .logout-button,
+    .dashboard-button {
+        padding: 8px;
+    }
+}
+
+/* Animation Helper */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Space below header for fixed positioning */
+body {
+    padding-top: 64px;
+}
