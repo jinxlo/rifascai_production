@@ -1,3 +1,4 @@
+// payments.js
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
@@ -15,6 +16,9 @@ const EmailService = require('../services/emailService'); // Import EmailService
 const JWT_SECRET = process.env.JWT_SECRET;
 
 module.exports = (upload, io) => {
+  // Middleware to parse JSON bodies (if not already included in main server)
+  router.use(express.json());
+
   // Get payment status
   router.get('/:id/status', auth.isUser, async (req, res) => {
     try {
@@ -210,9 +214,12 @@ module.exports = (upload, io) => {
           throw new Error('Invalid selectedNumbers format');
         }
 
+        // Format selected numbers as padded strings
+        const formattedTickets = tickets.map(num => String(num).padStart(3, '0'));
+
         // Reserve tickets
         const unavailableTickets = [];
-        for (const ticketNumber of tickets) {
+        for (const ticketNumber of formattedTickets) {
           const ticket = await Ticket.findOneAndUpdate(
             {
               ticketNumber,
@@ -238,7 +245,7 @@ module.exports = (upload, io) => {
           throw new Error(`Tickets not available: ${unavailableTickets.join(', ')}`);
         }
 
-        // Create payment record
+        // Create payment record with formattedTickets
         const payment = new Payment({
           user: user._id,
           raffle: activeRaffle._id,
@@ -246,7 +253,7 @@ module.exports = (upload, io) => {
           idNumber: idNumber.trim(),
           phoneNumber: phoneNumber.trim(),
           email,
-          selectedNumbers: tickets,
+          selectedNumbers: formattedTickets, // Store as formatted strings
           method,
           totalAmountUSD: parseFloat(totalAmountUSD),
           proofOfPayment: req.file ? `/uploads/proofs/${req.file.filename}` : '',
@@ -256,17 +263,23 @@ module.exports = (upload, io) => {
         await payment.save({ session });
 
         // Update raffle statistics
-        activeRaffle.reservedTickets += tickets.length;
+        activeRaffle.reservedTickets += formattedTickets.length;
         await activeRaffle.save({ session });
 
         await session.commitTransaction();
 
-        // Emit socket events
+        // Emit socket events after committing the transaction
         io.emit('ticketsReserved', {
-          tickets,
-          raffleId: activeRaffle._id
+          tickets: formattedTickets,
+          raffleId: activeRaffle._id.toString()
         });
-        io.emit('payment_created', payment);
+        io.emit('payment_created', {
+          paymentId: payment._id.toString(),
+          tickets: formattedTickets,
+          raffleId: activeRaffle._id.toString(),
+          status: payment.status,
+          // Add other payment details as needed
+        });
 
         // Send payment verification email
         await EmailService.sendPaymentVerificationEmail(email, fullName);
@@ -322,171 +335,187 @@ module.exports = (upload, io) => {
   );
 
   // Confirm payment (admin only)
-router.post('/:id/confirm', auth.isAdmin, async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  router.post('/:id/confirm', auth.isAdmin, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-  try {
-    const payment = await Payment.findById(req.params.id)
-      .session(session);
+    try {
+      const payment = await Payment.findById(req.params.id)
+        .session(session);
 
-    if (!payment) {
-      throw new Error('Payment not found');
+      if (!payment) {
+        throw new Error('Payment not found');
+      }
+
+      if (payment.status !== 'Pending') {
+        throw new Error('Payment is not in pending status');
+      }
+
+      // Update payment status
+      payment.status = 'Confirmed';
+      await payment.save({ session });
+
+      // Format selectedNumbers as padded strings
+      const formattedTickets = payment.selectedNumbers.map(num => String(num).padStart(3, '0'));
+
+      // Update tickets status to 'sold'
+      const ticketUpdates = await Ticket.updateMany(
+        {
+          ticketNumber: { $in: formattedTickets },
+          status: 'reserved'
+        },
+        {
+          $set: {
+            status: 'sold',
+            soldAt: new Date()
+          }
+        },
+        { session }
+      );
+
+      console.log(`Sold ${ticketUpdates.modifiedCount} tickets.`);
+
+      // Update raffle statistics
+      const raffle = await Raffle.findById(payment.raffle).session(session);
+      if (raffle) {
+        raffle.soldTickets += formattedTickets.length;
+        raffle.reservedTickets = Math.max(0, raffle.reservedTickets - formattedTickets.length);
+        await raffle.save({ session });
+      }
+
+      await session.commitTransaction();
+
+      // Emit socket events after committing the transaction
+      io.emit('payment_confirmed', {
+        paymentId: payment._id.toString(),
+        tickets: formattedTickets,
+        raffleId: payment.raffle.toString()
+      });
+
+      io.emit('ticket_status_changed', {
+        tickets: formattedTickets,
+        status: 'sold',
+        raffleId: payment.raffle.toString()
+      });
+
+      // Send confirmation email
+      await EmailService.sendPaymentConfirmationEmail(
+        payment.email,
+        payment.fullName,
+        formattedTickets,
+        raffle
+      );
+
+      res.json({
+        success: true,
+        message: 'Payment confirmed successfully'
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      console.error('Error confirming payment:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error confirming payment'
+      });
+    } finally {
+      session.endSession();
     }
+  });
 
-    if (payment.status !== 'Pending') {
-      throw new Error('Payment is not in pending status');
+  // Reject payment (admin only)
+  router.post('/:id/reject', auth.isAdmin, async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const { rejectionReason } = req.body;
+
+      if (!rejectionReason || !rejectionReason.trim()) {
+        throw new Error('Rejection reason is required');
+      }
+
+      const payment = await Payment.findById(req.params.id).session(session);
+
+      if (!payment) {
+        throw new Error('Payment not found');
+      }
+
+      if (payment.status !== 'Pending') {
+        throw new Error('Payment is not in pending status');
+      }
+
+      // Update payment status to 'Rejected'
+      payment.status = 'Rejected';
+      payment.rejectionReason = rejectionReason.trim();
+      await payment.save({ session });
+
+      // Format selectedNumbers as padded strings
+      const formattedTickets = payment.selectedNumbers.map(num => String(num).padStart(3, '0'));
+
+      // Update tickets to 'available'
+      const ticketUpdates = await Ticket.updateMany(
+        {
+          raffleId: payment.raffle, // Correct field name
+          ticketNumber: { $in: formattedTickets }
+        },
+        {
+          $set: {
+            status: 'available',
+            userId: null, // Ensure 'userId' matches the model
+            reservedAt: null,
+            soldAt: null
+          }
+        },
+        { session }
+      );
+
+      console.log(`Released ${ticketUpdates.modifiedCount} tickets to 'available' status.`);
+
+      // Update raffle statistics
+      const raffle = await Raffle.findById(payment.raffle).session(session);
+      if (raffle) {
+        raffle.reservedTickets = Math.max(0, raffle.reservedTickets - formattedTickets.length);
+        await raffle.save({ session });
+      }
+
+      await session.commitTransaction();
+
+      // Emit socket events after committing the transaction
+      io.emit('payment_rejected', {
+        paymentId: payment._id.toString(),
+        tickets: formattedTickets,
+        raffleId: payment.raffle.toString()
+      });
+
+      io.emit('ticket_status_changed', {
+        tickets: formattedTickets,
+        status: 'available',
+        raffleId: payment.raffle.toString()
+      });
+
+      // Send rejection email
+      await EmailService.sendPaymentRejectionEmail(
+        payment.email,
+        payment.fullName,
+        rejectionReason
+      );
+
+      res.json({
+        success: true,
+        message: 'Payment rejected successfully'
+      });
+
+    } catch (error) {
+      await session.abortTransaction();
+      console.error('Error rejecting payment:', error);
+      res.status(400).json({
+        success: false,
+        message: error.message || 'Error rejecting payment'
+      });
+    } finally {
+      session.endSession();
     }
-
-    // Store the previous status
-    payment.$__.previousStatus = payment.status;
-    
-    // Update payment status
-    payment.status = 'Confirmed';
-    await payment.save({ session });
-
-    // Update tickets status
-    await Ticket.updateMany(
-      {
-        ticketNumber: { $in: payment.selectedNumbers },
-        status: 'reserved'
-      },
-      {
-        $set: {
-          status: 'sold',
-          soldAt: new Date()
-        }
-      },
-      { session }
-    );
-
-    // Update raffle statistics
-    const raffle = await Raffle.findById(payment.raffle).session(session);
-    if (raffle) {
-      raffle.soldTickets += payment.selectedNumbers.length;
-      raffle.reservedTickets -= payment.selectedNumbers.length;
-      await raffle.save({ session });
-    }
-
-    await session.commitTransaction();
-
-    // Emit socket events
-    io.emit('payment_confirmed', {
-      paymentId: payment._id,
-      tickets: payment.selectedNumbers,
-      raffleId: payment.raffle
-    });
-
-    // Send confirmation email
-    await EmailService.sendPaymentConfirmationEmail(
-      payment.email,
-      payment.fullName,
-      payment.selectedNumbers,
-      raffle
-    );
-
-    res.json({
-      success: true,
-      message: 'Payment confirmed successfully'
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    console.error('Error confirming payment:', error);
-    res.status(400).json({
-      success: false,
-      message: error.message || 'Error confirming payment'
-    });
-  } finally {
-    session.endSession();
-  }
-});
-
-// Reject payment (admin only)
-router.post('/:id/reject', auth.isAdmin, async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    const { rejectionReason } = req.body;
-
-    if (!rejectionReason || !rejectionReason.trim()) {
-      throw new Error('Rejection reason is required');
-    }
-
-    const payment = await Payment.findById(req.params.id)
-      .session(session);
-
-    if (!payment) {
-      throw new Error('Payment not found');
-    }
-
-    if (payment.status !== 'Pending') {
-      throw new Error('Payment is not in pending status');
-    }
-
-    // Store the previous status
-    payment.$__.previousStatus = payment.status;
-
-    // Update payment
-    payment.status = 'Rejected';
-    payment.rejectionReason = rejectionReason.trim();
-    await payment.save({ session });
-
-    // Update tickets status
-    await Ticket.updateMany(
-      {
-        ticketNumber: { $in: payment.selectedNumbers },
-        status: 'reserved'
-      },
-      {
-        $set: {
-          status: 'available',
-          userId: null,
-          reservedAt: null
-        }
-      },
-      { session }
-    );
-
-    // Update raffle statistics
-    const raffle = await Raffle.findById(payment.raffle).session(session);
-    if (raffle) {
-      raffle.reservedTickets = Math.max(0, raffle.reservedTickets - payment.selectedNumbers.length);
-      await raffle.save({ session });
-    }
-
-    await session.commitTransaction();
-
-    // Emit socket event
-    io.emit('payment_rejected', {
-      paymentId: payment._id,
-      tickets: payment.selectedNumbers,
-      raffleId: payment.raffle
-    });
-
-    // Send rejection email
-    await EmailService.sendPaymentRejectionEmail(
-      payment.email,
-      payment.fullName,
-      rejectionReason
-    );
-
-    res.json({
-      success: true,
-      message: 'Payment rejected successfully'
-    });
-
-  } catch (error) {
-    await session.abortTransaction();
-    console.error('Error rejecting payment:', error);
-    res.status(400).json({
-      success: false,
-      message: error.message || 'Error rejecting payment'
-    });
-  } finally {
-    session.endSession();
-  }
-});
+  });
 
   // Get payment statistics
   router.get('/stats', auth.isAdmin, async (req, res) => {

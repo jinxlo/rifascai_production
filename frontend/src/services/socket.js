@@ -10,6 +10,7 @@ class SocketService {
     this.maxReconnectAttempts = 5;
     this.listeners = new Map();
     this.isConnected = false;
+    this.eventQueue = [];
     this.initialize();
   }
 
@@ -24,7 +25,7 @@ class SocketService {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      autoConnect: false,
+      autoConnect: true,
       auth: {
         token: localStorage.getItem('token')
       },
@@ -32,6 +33,7 @@ class SocketService {
 
     this.setupEventHandlers();
     this.setupRaffleEventHandlers();
+    this.connect();
   }
 
   setupEventHandlers() {
@@ -39,7 +41,7 @@ class SocketService {
       console.log('Socket connected successfully');
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      // toast?.success('Conexión en tiempo real establecida');
+      this.processEventQueue();
     });
 
     this.socket.on('connect_error', (error) => {
@@ -63,6 +65,7 @@ class SocketService {
     this.socket.on('reconnect', (attemptNumber) => {
       console.log('Socket reconnected after', attemptNumber, 'attempts');
       this.isConnected = true;
+      this.processEventQueue();
       toast?.success('Conexión reestablecida');
     });
 
@@ -83,30 +86,119 @@ class SocketService {
   }
 
   setupRaffleEventHandlers() {
-    this.socket.on('raffle_created', (data) => {
-      console.log('New raffle created:', data);
-      this.emit('eventReceived', { type: 'raffle_created', data });
-    });
+    const formatTicketNumbers = (tickets) => {
+      return tickets.map(ticket => {
+        // If it's a number, pad it with zeros
+        if (typeof ticket === 'number') {
+          return String(ticket).padStart(3, '0');
+        }
+        // If it's already a string, ensure it's properly formatted
+        return String(ticket).padStart(3, '0');
+      });
+    };
+  
+    // Payment Rejected Handler - Modified to ensure proper event emission
+    this.socket.on('payment_rejected', (data) => {
+      console.log('Payment rejected event received:', data);
+      if (data?.tickets) {
+        const formattedTickets = data.tickets.map(num => String(num).padStart(3, '0'));
+        
+        // Emit both events to ensure the UI updates
+        this.emit('eventReceived', {
+          type: 'payment_rejected',
+          data: {
+            tickets: formattedTickets,
+            status: 'available',
+            raffleId: data.raffleId
+          }
+        });
 
-    this.socket.on('raffle_updated', (data) => {
-      console.log('Raffle updated:', data);
-      this.emit('eventReceived', { type: 'raffle_updated', data });
+        this.emit('eventReceived', {
+          type: 'ticket_status_changed',
+          data: {
+            tickets: formattedTickets,
+            status: 'available',
+            raffleId: data.raffleId
+          }
+        });
+      }
     });
-
-    this.socket.on('payment_confirmed', (data) => {
-      console.log('Payment confirmed:', data);
-      this.emit('eventReceived', { type: 'payment_confirmed', data });
-      this.emit('tickets_sold', { tickets: data.tickets }); // Emit tickets_sold with confirmed tickets
+  
+    // Ticket Status Changed Handler - Simplified
+    this.socket.on('ticket_status_changed', (data) => {
+      console.log('Ticket status changed event received:', data);
+      if (data?.tickets) {
+        const formattedData = {
+          tickets: data.tickets.map(num => String(num).padStart(3, '0')),
+          status: data.status.toLowerCase(),
+          raffleId: data.raffleId
+        };
+        // Broadcast the status change
+        this.emit('eventReceived', { 
+          type: 'ticket_status_changed', 
+          data: formattedData 
+        });
+      }
     });
-
+  
+    // Tickets Released Handler
+    this.socket.on('tickets_released', (data) => {
+      console.log('tickets_released event received:', data);
+      if (data?.tickets) {
+        const formattedData = {
+          tickets: formatTicketNumbers(Array.isArray(data.tickets) ? data.tickets : [data.tickets]),
+          status: 'available',
+          raffleId: data.raffleId
+        };
+        console.log('Emitting ticket status update for released tickets:', formattedData);
+        this.emit('ticket_status_changed', formattedData);
+        this.emit('event_received', { type: 'tickets_released', data: formattedData });
+      }
+    });
+  
+    // Tickets Reserved Handler
     this.socket.on('tickets_reserved', (data) => {
-      console.log('Tickets reserved:', data);
-      this.emit('eventReceived', { type: 'tickets_reserved', data });
+      console.log('tickets_reserved event received:', data);
+      if (data?.tickets) {
+        const formattedData = {
+          tickets: formatTicketNumbers(Array.isArray(data.tickets) ? data.tickets : [data.tickets]),
+          status: 'reserved',
+          raffleId: data.raffleId
+        };
+        console.log('Emitting ticket status update for reserved tickets:', formattedData);
+        this.emit('ticket_status_changed', formattedData);
+        this.emit('event_received', { type: 'tickets_reserved', data: formattedData });
+      }
     });
-
+  
+    // Payment Confirmed Handler
+    this.socket.on('payment_confirmed', (data) => {
+      console.log('payment_confirmed event received:', data);
+      if (data?.tickets) {
+        const formattedData = {
+          tickets: formatTicketNumbers(Array.isArray(data.tickets) ? data.tickets : [data.tickets]),
+          status: 'sold',
+          raffleId: data.raffleId
+        };
+        console.log('Emitting ticket status update for sold tickets:', formattedData);
+        this.emit('ticket_status_changed', formattedData);
+        this.emit('event_received', { type: 'payment_confirmed', data: formattedData });
+      }
+    });
+  
+    // Tickets Sold Handler
     this.socket.on('tickets_sold', (data) => {
-      console.log('Tickets sold:', data);
-      this.emit('eventReceived', { type: 'tickets_sold', data });
+      console.log('tickets_sold event received:', data);
+      if (data?.tickets) {
+        const formattedData = {
+          tickets: formatTicketNumbers(Array.isArray(data.tickets) ? data.tickets : [data.tickets]),
+          status: 'sold',
+          raffleId: data.raffleId
+        };
+        console.log('Emitting ticket status update for sold tickets:', formattedData);
+        this.emit('ticket_status_changed', formattedData);
+        this.emit('event_received', { type: 'tickets_sold', data: formattedData });
+      }
     });
   }
 
@@ -131,7 +223,6 @@ class SocketService {
     toast?.error('No se pudo reestablecer la conexión. Por favor, recarga la página.');
   }
 
-  // Public methods
   connect() {
     console.log('Connecting socket...');
     if (this.socket && !this.isConnected) {
@@ -147,12 +238,42 @@ class SocketService {
   }
 
   emit(eventName, data) {
-    if (!this.isConnected) {
-      console.warn('Socket is not connected. Event not emitted:', eventName);
+    if (!this.socket) {
+      console.error('Socket not initialized');
+      this.queueEvent(eventName, data);
       return false;
     }
-    this.socket.emit(eventName, data);
-    return true;
+
+    if (!this.isConnected) {
+      console.warn('Socket is not connected. Queueing event:', eventName);
+      this.queueEvent(eventName, data);
+      return false;
+    }
+
+    try {
+      console.log('Emitting event:', eventName, data);
+      this.socket.emit(eventName, data);
+      return true;
+    } catch (error) {
+      console.error('Error emitting event:', error);
+      this.queueEvent(eventName, data);
+      return false;
+    }
+  }
+
+  send(eventName, data) {
+    return this.emit(eventName, data);
+  }
+
+  queueEvent(eventName, data) {
+    this.eventQueue.push({ eventName, data });
+  }
+
+  processEventQueue() {
+    while (this.eventQueue.length > 0) {
+      const { eventName, data } = this.eventQueue.shift();
+      this.emit(eventName, data);
+    }
   }
 
   on(eventName, callback) {
@@ -191,17 +312,21 @@ class SocketService {
       }
     }
   }
+
+  ensureConnection() {
+    if (!this.isConnected) {
+      this.connect();
+    }
+    return this.isConnected;
+  }
 }
 
-// Create singleton instance
 const socketService = new SocketService();
 
-// Development helpers
 if (process.env.NODE_ENV === 'development') {
   window.socketService = socketService;
 }
 
-// Public method to update token and reconnect socket
 export const updateSocketAuth = () => {
   const token = localStorage.getItem('token');
   if (token) {

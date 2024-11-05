@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useSocket } from '../../contexts/SocketContext';
+import socketService from '../../services/socket'; // Use socketService directly
 import { Loader, AlertCircle, Check, UploadIcon } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import '../../assets/styles/adminSections/CreateRaffle.css';
 
 const CreateRaffle = () => {
   const navigate = useNavigate();
-  const socket = useSocket();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -113,8 +112,14 @@ const CreateRaffle = () => {
       if (response.data) {
         setSuccess(true);
         setProcessingStatus('¡Rifa creada exitosamente!');
-        socket.emit('raffle_created', response.data.raffle);
-        
+
+        // Emit the 'raffle_created' event directly through socketService
+        if (socketService.isSocketConnected()) {
+          socketService.emit('raffle_created', response.data.raffle);
+        } else {
+          console.warn('Socket is not connected. Event not emitted.');
+        }
+
         // Show immediate success toast
         toast.success('¡Rifa creada exitosamente!', {
           duration: 4000,

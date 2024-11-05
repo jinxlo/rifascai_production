@@ -4,7 +4,7 @@ import { useSocket } from '../../contexts/SocketContext';
 import { Eye } from 'lucide-react';
 import '../../assets/styles/adminSections/PendingPayments.css';
 
-// Utility functions moved to the top level
+// Utility functions remain the same
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString('es-ES', {
     year: 'numeric',
@@ -22,6 +22,9 @@ const formatCurrency = (amount) => {
   }).format(amount);
 };
 
+const formatTicketNumber = (number) => String(number).padStart(3, '0');
+
+// RejectionDialog component remains the same
 const RejectionDialog = ({ payment, onClose, onReject, loading }) => {
   const [localRejectionReason, setLocalRejectionReason] = useState('');
 
@@ -66,6 +69,7 @@ const RejectionDialog = ({ payment, onClose, onReject, loading }) => {
   );
 };
 
+// PaymentDetailsModal component remains the same
 const PaymentDetailsModal = ({ payment, onClose, onConfirm, onReject, loading }) => (
   <div className="modal-overlay">
     <div className="modal-content">
@@ -106,7 +110,7 @@ const PaymentDetailsModal = ({ payment, onClose, onConfirm, onReject, loading })
           <label>Números Seleccionados:</label>
           <p>
             {payment.selectedNumbers
-              .map(num => String(num).padStart(3, '0'))
+              .map(formatTicketNumber)
               .join(', ')}
           </p>
         </div>
@@ -161,21 +165,28 @@ const PendingPayments = () => {
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
 
   useEffect(() => {
+    console.log('Setting up socket listeners for payments...');
     fetchPayments();
 
-    socket.on('payment_confirmed', (data) => {
+    const handlePaymentConfirmed = (data) => {
+      console.log('Payment confirmed event received:', data);
       setPayments((prev) => prev.filter((p) => p._id !== data.paymentId));
       setSuccess('Pago confirmado exitosamente');
-    });
+    };
 
-    socket.on('payment_rejected', (data) => {
+    const handlePaymentRejected = (data) => {
+      console.log('Payment rejected event received:', data);
       setPayments((prev) => prev.filter((p) => p._id !== data.paymentId));
       setSuccess('Pago rechazado exitosamente');
-    });
+    };
+
+    socket.on('payment_confirmed', handlePaymentConfirmed);
+    socket.on('payment_rejected', handlePaymentRejected);
 
     return () => {
-      socket.off('payment_confirmed');
-      socket.off('payment_rejected');
+      console.log('Cleaning up socket listeners...');
+      socket.off('payment_confirmed', handlePaymentConfirmed);
+      socket.off('payment_rejected', handlePaymentRejected);
     };
   }, [socket]);
 
@@ -191,6 +202,7 @@ const PendingPayments = () => {
         },
       });
 
+      console.log('Fetched pending payments:', response.data);
       setPayments(response.data);
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -207,6 +219,8 @@ const PendingPayments = () => {
       setSuccess(null);
 
       const token = localStorage.getItem('token');
+      console.log('Confirming payment:', paymentId);
+
       const response = await axios.post(
         `http://localhost:5000/api/payments/${paymentId}/confirm`,
         {},
@@ -218,6 +232,7 @@ const PendingPayments = () => {
       );
 
       if (response.data.success) {
+        console.log('Payment confirmed successfully:', response.data);
         setShowModal(false);
         setSelectedPayment(null);
         setSuccess('Pago confirmado exitosamente');
@@ -236,9 +251,21 @@ const PendingPayments = () => {
       setError(null);
 
       const token = localStorage.getItem('token');
+      
+      const payment = payments.find(p => p._id === paymentId);
+      if (!payment) {
+        throw new Error('Payment not found');
+      }
+
+      const ticketNumbers = payment.selectedNumbers.map(formatTicketNumber);
+      console.log('Rejecting payment. Ticket numbers to release:', ticketNumbers);
+
       const response = await axios.post(
         `http://localhost:5000/api/payments/${paymentId}/reject`,
-        { rejectionReason: reason },
+        { 
+          rejectionReason: reason,
+          tickets: ticketNumbers
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -247,10 +274,14 @@ const PendingPayments = () => {
       );
 
       if (response.data.success) {
+        console.log('Payment rejected successfully. Response:', response.data);
+        
         setShowRejectionDialog(false);
         setShowModal(false);
         setSelectedPayment(null);
         setSuccess('Pago rechazado exitosamente');
+        
+        fetchPayments();
       }
     } catch (error) {
       console.error('Error rejecting payment:', error);
@@ -260,18 +291,7 @@ const PendingPayments = () => {
     }
   };
 
-  if (loading && payments.length === 0) {
-    return (
-      <div className="pending-payments">
-        <h2 className="page-title">Pagos Pendientes</h2>
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <span className="loading-text">Cargando pagos pendientes...</span>
-        </div>
-      </div>
-    );
-  }
-
+  // Rest of the JSX remains the same
   return (
     <div className="pending-payments">
       <h2 className="page-title">Pagos Pendientes</h2>
@@ -307,7 +327,7 @@ const PendingPayments = () => {
                   <td>{formatDate(payment.createdAt)}</td>
                   <td>
                     {payment.selectedNumbers
-                      .map(num => String(num).padStart(3, '0'))
+                      .map(formatTicketNumber)
                       .join(', ')}
                   </td>
                   <td>{payment.method}</td>

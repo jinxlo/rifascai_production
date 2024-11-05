@@ -1,10 +1,11 @@
-// src/pages/SelectNumbersPage.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import socket from '../services/socket';
 import { Package, DollarSign, Ticket } from 'lucide-react';
 import '../assets/styles/SelectNumbersPage.css';
+
+const formatTicketNumber = (number) => String(number).padStart(3, '0');
 
 const SelectNumbersPage = () => {
   const [tickets, setTickets] = useState([]);
@@ -14,167 +15,177 @@ const SelectNumbersPage = () => {
   const [activeRaffle, setActiveRaffle] = useState(null);
   const navigate = useNavigate();
 
+  const fetchRaffleAndTickets = async () => {
+    try {
+      const raffleResponse = await axios.get('http://localhost:5000/api/raffle');
+      const raffle = raffleResponse.data;
+      setActiveRaffle(raffle);
+
+      const ticketsResponse = await axios.get('http://localhost:5000/api/tickets');
+      console.log('Raw tickets from server:', ticketsResponse.data);
+
+      const processedTickets = ticketsResponse.data
+        .filter(ticket => ticket.ticketNumber <= raffle.totalTickets)
+        .map(ticket => ({
+          ...ticket,
+          status: ticket.status.toLowerCase(),
+          ticketNumber: formatTicketNumber(ticket.ticketNumber)
+        }));
+      
+      console.log('Processed tickets:', processedTickets);
+      setTickets(processedTickets);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+      setError('Error al cargar la información de la rifa.');
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchRaffleAndTickets = async () => {
-      try {
-        // Primero obtenemos la rifa activa
-        const raffleResponse = await axios.get('http://localhost:5000/api/raffle');
-        const raffle = raffleResponse.data;
-        setActiveRaffle(raffle);
+    const handleTicketStatusChange = (data) => {
+      console.log('Handling ticket status change:', data);
+      if (!data.tickets) return;
 
-        // Luego obtenemos los tickets
-        const ticketsResponse = await axios.get('http://localhost:5000/api/tickets');
-        console.log('Raw tickets from server:', ticketsResponse.data);
-
-        const processedTickets = ticketsResponse.data
-          .filter(ticket => ticket.ticketNumber <= raffle.totalTickets)
-          .map(ticket => {
-            console.log(`Processing ticket ${ticket.ticketNumber}:`, ticket.status); // Debug log
+      const formattedTickets = data.tickets.map(num => String(num).padStart(3, '0'));
+      console.log('Formatted tickets to update:', formattedTickets);
+      
+      setTickets(prevTickets => {
+        const updatedTickets = prevTickets.map(ticket => {
+          if (formattedTickets.includes(ticket.ticketNumber)) {
+            console.log(`Updating ticket ${ticket.ticketNumber} from ${ticket.status} to ${data.status}`);
             return {
               ...ticket,
-              status: ticket.status.toLowerCase(),
-              ticketNumber: String(ticket.ticketNumber).padStart(3, '0')
+              status: data.status.toLowerCase(),
+              reservedAt: null, // Clear reservation data
+              userId: null      // Clear user data
             };
-          });
+          }
+          return ticket;
+        });
+        console.log('Updated tickets state:', updatedTickets);
+        return updatedTickets;
+      });
+    };
+
+    const handlePaymentRejected = async (data) => {
+      console.log('Payment rejected event received:', data);
+      if (data.tickets) {
+        const formattedTickets = data.tickets.map(num => String(num).padStart(3, '0'));
+        console.log('Tickets to release:', formattedTickets);
         
-        console.log('Processed tickets:', processedTickets);
-        setTickets(processedTickets);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error al obtener datos:', error);
-        setError('Error al cargar la información de la rifa. Por favor, inténtelo de nuevo más tarde.');
-        setLoading(false);
+        // Force immediate state update for rejected tickets
+        setTickets(prevTickets => {
+          const updatedTickets = prevTickets.map(ticket => {
+            if (formattedTickets.includes(ticket.ticketNumber)) {
+              console.log(`Releasing ticket ${ticket.ticketNumber}`);
+              return {
+                ...ticket,
+                status: 'available',
+                reservedAt: null,
+                userId: null
+              };
+            }
+            return ticket;
+          });
+          return updatedTickets;
+        });
+
+        // Clear these numbers from selection if they were selected
+        setSelectedNumbers(prev => 
+          prev.filter(num => !formattedTickets.includes(num))
+        );
+
+        // Force a refresh of the tickets data
+        await fetchRaffleAndTickets();
+      }
+    };
+
+    // Add handler for tickets_released event
+    const handleTicketsReleased = (data) => {
+      console.log('Tickets released event received:', data);
+      if (data.tickets) {
+        const formattedTickets = data.tickets.map(num => String(num).padStart(3, '0'));
+        handleTicketStatusChange({
+          tickets: formattedTickets,
+          status: 'available'
+        });
       }
     };
 
     fetchRaffleAndTickets();
 
-    // Update socket event handlers
-    socket.on('ticketsReserved', (data) => {
-      console.log('Tickets reserved event:', data); // Debug log
-      setTickets((prevTickets) =>
-        [...prevTickets].map((ticket) => ({
-          ...ticket,
-          status: data.tickets.includes(String(ticket.ticketNumber).padStart(3, '0')) 
-            ? 'reserved' 
-            : ticket.status
-        }))
-      );
-    });
-
-    socket.on('tickets_sold', (data) => {
-      console.log('Tickets sold event:', data); // Debug log
-      setTickets((prevTickets) =>
-        [...prevTickets].map((ticket) => ({
-          ...ticket,
-          status: data.tickets.includes(String(ticket.ticketNumber).padStart(3, '0'))
-            ? 'sold'
-            : ticket.status
-        }))
-      );
-    });
-
-    socket.on('payment_confirmed', (data) => {
-      console.log('Payment confirmed event received:', data);
-      if (data.tickets) {
-        setTickets(prevTickets => {
-          const updatedTickets = prevTickets.map(ticket => {
-            const formattedNumber = String(ticket.ticketNumber).padStart(3, '0');
-            const isSold = data.tickets.includes(formattedNumber);
-            
-            // Debug log
-            if (isSold) {
-              console.log(`Marking ticket ${formattedNumber} as sold`);
-            }
-            
-            return {
-              ...ticket,
-              status: isSold ? 'sold' : ticket.status
-            };
-          });
-          
-          // Debug log the updated tickets
-          console.log('Tickets after update:', updatedTickets);
-          return updatedTickets;
-        });
-      }
-    });
-
-    socket.on('raffle_updated', (updatedRaffle) => {
-      setActiveRaffle(updatedRaffle);
-    });
+    // Socket event handlers with proper cleanup
+    socket.on('ticket_status_changed', handleTicketStatusChange);
+    socket.on('payment_rejected', handlePaymentRejected);
+    socket.on('tickets_released', handleTicketsReleased);
 
     return () => {
-      socket.off('ticketsReserved');
-      socket.off('tickets_sold');
-      socket.off('payment_confirmed');
-      socket.off('raffle_updated');
+      socket.off('ticket_status_changed', handleTicketStatusChange);
+      socket.off('payment_rejected', handlePaymentRejected);
+      socket.off('tickets_released', handleTicketsReleased);
     };
   }, []);
 
   const handleNumberClick = (number) => {
     setError(null);
 
-    // Find the ticket
     const ticket = tickets.find(t => t.ticketNumber === number);
-    
-    // Check if ticket is available
-    if (ticket && ticket.status !== 'available') {
-      console.log(`Ticket ${number} is not available. Status:`, ticket.status);
+    if (!ticket || ticket.status !== 'available') {
       return;
     }
 
-    if (selectedNumbers.includes(number)) {
-      setSelectedNumbers(prevNumbers => 
-        prevNumbers.filter(n => n !== number).sort((a, b) => a - b)
-      );
-    } else {
-      setSelectedNumbers(prevNumbers => 
-        [...prevNumbers, number].sort((a, b) => a - b)
-      );
-    }
+    setSelectedNumbers(prevNumbers => {
+      const updated = prevNumbers.includes(number)
+        ? prevNumbers.filter(n => n !== number)
+        : [...prevNumbers, number];
+      return updated.sort((a, b) => a - b);
+    });
   };
 
-  const handleContinue = async () => {
+  const handleContinue = () => {
     if (!selectedNumbers.length) {
       setError("Por favor, seleccione al menos un ticket para continuar.");
       return;
     }
 
-    try {
-      navigate('/payment-method', { 
-        state: { 
-          selectedNumbers: [...selectedNumbers].sort((a, b) => a - b),
-          raffleId: activeRaffle._id
-        } 
-      });
-    } catch (error) {
-      console.error('Error al proceder al pago:', error);
-      setError('Error al proceder al pago. Por favor, inténtelo de nuevo.');
-    }
+    navigate('/payment-method', { 
+      state: { 
+        selectedNumbers: [...selectedNumbers].sort((a, b) => a - b),
+        raffleId: activeRaffle._id
+      } 
+    });
   };
 
   const createNumberGrid = () => {
     if (!activeRaffle) return [];
     
-    const numbers = [];
-    for (let i = 0; i < activeRaffle.totalTickets; i++) {
+    return Array.from({ length: activeRaffle.totalTickets }, (_, i) => {
       const formattedNumber = String(i).padStart(3, '0');
       const existingTicket = tickets.find(t => t.ticketNumber === formattedNumber);
-      const ticket = existingTicket || {
+      
+      // Default to available
+      let status = 'available';
+      
+      if (existingTicket) {
+        // Only accept 'sold' or 'reserved' if they're explicitly set and valid
+        const currentStatus = existingTicket.status.toLowerCase();
+        if (currentStatus === 'sold') {
+          status = 'sold';
+        } else if (currentStatus === 'reserved' && existingTicket.reservedAt) {
+          status = 'reserved';
+        } else {
+          status = 'available';
+        }
+        
+        console.log(`Grid: Ticket ${formattedNumber} final status: ${status}`);
+      }
+      
+      return {
         ticketNumber: formattedNumber,
-        status: 'available'
+        status: status
       };
-      
-      // Ensure status is lowercase and properly formatted
-      ticket.status = String(ticket.status).toLowerCase();
-      
-      // Debug log for ticket status
-      console.log(`Ticket ${formattedNumber} status:`, ticket.status);
-      
-      numbers.push(ticket);
-    }
-    return numbers;
+    });
   };
 
   if (loading) {
@@ -202,7 +213,6 @@ const SelectNumbersPage = () => {
 
   return (
     <div className="select-numbers-page">
-      {/* Tarjeta de Información de Rifa */}
       <div className="raffle-info-card">
         <img 
           src={activeRaffle.productImage} 
@@ -237,25 +247,15 @@ const SelectNumbersPage = () => {
 
       {error && <div className="error-message">{error}</div>}
       
-      {/* Tarjeta de Selección de Números */}
       <div className="numbers-selection-card">
         <h3>Selecciona Tus Números</h3>
         <div className="numbers-grid">
           {createNumberGrid().map((ticket) => {
             const status = String(ticket.status).toLowerCase();
             const isDisabled = status === 'reserved' || status === 'sold';
-            
-            // Create the class string
             const buttonClass = `number-button ${status} ${
               selectedNumbers.includes(ticket.ticketNumber) ? 'selected' : ''
             }`;
-            
-            // Debug log
-            console.log(`Rendering ticket ${ticket.ticketNumber}:`, {
-              status,
-              isDisabled,
-              buttonClass
-            });
 
             return (
               <button
@@ -272,7 +272,6 @@ const SelectNumbersPage = () => {
         </div>
       </div>
 
-      {/* Tarjeta Resumen Fija */}
       <div className="sticky-summary">
         <div className="summary-content">
           <div className="summary-details">
@@ -292,6 +291,37 @@ const SelectNumbersPage = () => {
           </button>
         </div>
       </div>
+
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{ position: 'fixed', bottom: '10px', right: '10px', display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={fetchRaffleAndTickets}
+            style={{ 
+              padding: '5px 10px',
+              background: '#ddd',
+              border: '1px solid #999',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Refresh Tickets
+          </button>
+          <button 
+            onClick={() => {
+              console.log('Current tickets state:', tickets);
+            }}
+            style={{ 
+              padding: '5px 10px',
+              background: '#ddd',
+              border: '1px solid #999',
+              borderRadius: '4px',
+              cursor: 'pointer'
+            }}
+          >
+            Log Tickets
+          </button>
+        </div>
+      )}
     </div>
   );
 };
