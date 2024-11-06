@@ -1,0 +1,242 @@
+/* src/assets/styles/adminSections/AdminLayout.css */
+@import '../base.css';
+
+/* Admin Layout Variables */
+:root {
+  --sidebar-width: 250px;
+  --sidebar-collapsed-width: 80px;
+  --sidebar-bg: #2A303C;
+  --sidebar-text: #A6ADBA;
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-active: var(--primary);
+  --header-height: 64px;
+  --transition-speed: 0.3s;
+}
+
+/* Layout Structure */
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--background);
+}
+
+/* Sidebar Styles */
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  transition: width var(--transition-speed) ease;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+  z-index: 50;
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+/* Logo Container */
+.logo-container {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--sidebar-border);
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.logo-container span {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-left: 0.75rem;
+  opacity: 1;
+  transition: opacity var(--transition-speed) ease;
+}
+
+.collapsed .logo-container span {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.nav-item-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  transition: transform var(--transition-speed) ease;
+}
+
+/* Navigation Section */
+.nav-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.nav-section::-webkit-scrollbar {
+  width: 4px;
+}
+
+.nav-section::-webkit-scrollbar-thumb {
+  background-color: var(--sidebar-border);
+  border-radius: 4px;
+}
+
+/* Navigation Items */
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  color: var(--sidebar-text);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+
+.nav-item:hover {
+  background-color: var(--sidebar-hover);
+  color: white;
+}
+
+.nav-item.active {
+  color: white;
+  background-color: var(--sidebar-active);
+}
+
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background-color: white;
+  border-radius: 0 3px 3px 0;
+}
+
+.nav-item-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-left: 0.75rem;
+  transition: opacity var(--transition-speed) ease;
+}
+
+.collapsed .nav-item-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+/* User Menu */
+.user-menu {
+  padding: 1rem;
+  border-top: 1px solid var(--sidebar-border);
+  margin-top: auto;
+}
+
+.user-menu-button {
+  display: flex;
+  align-items: center;
+  padding: 0.875rem 1rem;
+  width: 100%;
+  color: var(--sidebar-text);
+  background: transparent;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+}
+
+.user-menu-button:hover {
+  background-color: var(--sidebar-hover);
+  color: white;
+}
+
+.user-menu-button .nav-item-icon {
+  color: #ef4444;
+}
+
+/* Main Content Area */
+.main-content {
+  margin-left: var(--sidebar-width);
+  padding: 2rem;
+  width: calc(100% - var(--sidebar-width));
+  transition: all var(--transition-speed) ease;
+  min-height: 100vh;
+  background-color: var(--background);
+}
+
+.main-content.expanded {
+  margin-left: var(--sidebar-collapsed-width);
+  width: calc(100% - var(--sidebar-collapsed-width));
+}
+
+/* Mobile Styles */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.visible {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 1rem;
+  }
+
+  .main-content.expanded {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    backdrop-filter: blur(4px);
+  }
+
+  .collapsed .nav-item-text {
+    opacity: 1;
+    width: auto;
+  }
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

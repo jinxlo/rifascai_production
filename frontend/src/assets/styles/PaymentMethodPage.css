@@ -1,0 +1,288 @@
+/* src/assets/styles/PaymentMethodPage.css */
+
+.payment-method-page {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  padding: 2rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.payment-method-container {
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+.header-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header-section h2 {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.selected-numbers-summary {
+  background-color: #f3f4f6;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.summary-label {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.summary-numbers {
+  color: #111827;
+  font-family: monospace;
+  font-size: 1.1em;
+}
+
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.payment-method-card {
+  position: relative;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.payment-method-card:hover {
+  border-color: #6a1b9a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+              0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  background-color: #6a1b9a;
+}
+
+.payment-method-card:hover .method-name,
+.payment-method-card:hover .method-description,
+.payment-method-card:hover .method-amount .amount,
+.payment-method-card:hover .exchange-rate-info .rate {
+  color: white;
+}
+
+.payment-method-card:hover .method-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.method-tag {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: #6a1b9a;
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.method-icon {
+  background: #f3f4f6;
+  padding: 1rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6a1b9a;
+}
+
+.method-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  transition: color 0.2s ease;
+}
+
+.method-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+  transition: color 0.2s ease;
+}
+
+/* Styling specific to Zelle and Cash options */
+.payment-method-card#zelle {
+  border: 1px solid #4a5568; /* Different border color to highlight */
+}
+
+.payment-method-card#cash {
+  border: 1px solid #10b981; /* Cash-specific border color */
+}
+
+.payment-method-card#cash .method-icon {
+  background: #d1fae5;
+  color: #10b981; /* Green color for cash */
+}
+
+.payment-method-card#cash:hover {
+  border-color: #059669;
+  background-color: #10b981;
+}
+
+.payment-method-card#cash:hover .method-name,
+.payment-method-card#cash:hover .method-description,
+.payment-method-card#cash:hover .method-amount .amount {
+  color: white;
+}
+
+.info-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.info-section h4 {
+  color: #111827;
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.info-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.info-section li {
+  color: #4b5563;
+  font-size: 0.875rem;
+  padding-left: 1.5rem;
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.info-section li::before {
+  content: '•';
+  color: #6a1b9a;
+  position: absolute;
+  left: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .payment-method-container {
+    padding: 1.5rem;
+  }
+
+  .payment-methods-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header-section h2 {
+    font-size: 1.5rem;
+  }
+
+  .payment-method-card {
+    padding: 1.5rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .payment-method-page {
+    padding: 1rem 0.5rem;
+  }
+
+  .payment-method-container {
+    padding: 1rem;
+  }
+
+  .selected-numbers-summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+.method-amount {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.method-amount .amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a202c;
+  display: block;
+}
+
+.exchange-rate-info {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.exchange-rate-info .rate {
+  color: #1a202c;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.exchange-rate-info .usd-reference {
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.exchange-rate-info .loading {
+  color: #718096;
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+.exchange-rate-info .error {
+  color: #e53e3e;
+  font-size: 0.75rem;
+}
+
+.payment-method-card:hover .method-amount .amount,
+.payment-method-card:hover .exchange-rate-info .rate,
+.payment-method-card:hover .exchange-rate-info .usd-reference {
+  color: white;
+}
+
+.payment-method-card:hover .exchange-rate-info .loading {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.payment-method-card:hover .exchange-rate-info .error {
+  color: #fecaca;
+}
